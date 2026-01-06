@@ -21,8 +21,10 @@ public class ButtonController : MonoBehaviour, IPointerDownHandler, IPointerUpHa
     private float scaleY;
     // Stores the original position of the Camera GameObject
     private Vector3 originalPositionCamera;
+    private Vector3 originalTextPosition;
     private bool isHovering = false;
     private bool isPressed = false;
+    private bool isTextDown = false;
 
     // Called when the script instance is being loaded
     void Awake()
@@ -31,6 +33,10 @@ public class ButtonController : MonoBehaviour, IPointerDownHandler, IPointerUpHa
         scaleY = TargetRectTransform.localScale.y;
         // Store the camera's original position
         originalPositionCamera = CameraObject.transform.position;
+        if (TextObject != null)
+        {
+            originalTextPosition = TextObject.transform.position;
+        }
     }
 
     // Quits the application
@@ -41,24 +47,40 @@ public class ButtonController : MonoBehaviour, IPointerDownHandler, IPointerUpHa
 
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (isPressed)
+        {
+            return;
+        }
         isPressed = true;
         MoveTextDown();
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
+        if (!isPressed)
+        {
+            return;
+        }
         isPressed = false;
         MoveTextUp();
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
+        if (!isHovering)
+        {
+            return;
+        }
         isHovering = false;
         MoveTextUp();
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
+        if (isHovering)
+        {
+            return;
+        }
         isHovering = true;
         if (eventData.pointerPress == gameObject)
         {
@@ -69,27 +91,20 @@ public class ButtonController : MonoBehaviour, IPointerDownHandler, IPointerUpHa
     // Moves the TextObject down
     public void MoveTextDown()
     {
-        if (TextObject != null)
+        if (TextObject != null && !isTextDown)
         {
-            TextObject.transform.position = new Vector3(
-                TextObject.transform.position.x,
-                TextObject.transform.position.y - 20 * scaleY,
-                TextObject.transform.position.z
-        );
+            TextObject.transform.position = originalTextPosition + new Vector3(0f, -20f * scaleY, 0f);
+            isTextDown = true;
         }
     }
 
     // Moves the TextObject up
     public void MoveTextUp()
     {
-        if (TextObject != null)
+        if (TextObject != null && isTextDown)
         {
-            TextObject.transform.position = new Vector3(
-            TextObject.transform.position.x,
-            TextObject.transform.position.y + 20 * scaleY,
-            TextObject.transform.position.z
-
-        );
+            TextObject.transform.position = originalTextPosition;
+            isTextDown = false;
         }
     }
 
