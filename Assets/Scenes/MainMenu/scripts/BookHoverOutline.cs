@@ -6,21 +6,26 @@ public class BookHover : MonoBehaviour
     [Header("Settings")]
     public Material outlineMaterial; // Drag your 'OutlineMat' here in Inspector
 
-    private MeshRenderer meshRenderer;
-    private Material[] originalMaterials; // Stores the clean state of the book
+    private Renderer[] targetRenderers;
+    private Material[][] originalMaterials; // Stores the clean state of the book
+    private bool isOutlined;
 
     void Start()
     {
-        meshRenderer = GetComponent<MeshRenderer>();
+        targetRenderers = GetComponentsInChildren<Renderer>(true);
 
-        if (meshRenderer == null)
+        if (targetRenderers == null || targetRenderers.Length == 0)
         {
-            Debug.LogError("ERROR: No MeshRenderer found on " + gameObject.name);
+            Debug.LogError("ERROR: No Renderer found on " + gameObject.name);
             return;
         }
 
         // Cache the original materials list so we can always revert to it
-        originalMaterials = meshRenderer.sharedMaterials;
+        originalMaterials = new Material[targetRenderers.Length][];
+        for (int i = 0; i < targetRenderers.Length; i++)
+        {
+            originalMaterials[i] = targetRenderers[i].sharedMaterials;
+        }
     }
 
     void OnMouseEnter()
@@ -33,14 +38,27 @@ public class BookHover : MonoBehaviour
             return;
         }
 
-        // Create a new list based on the original materials
-        List<Material> newMaterials = new List<Material>(originalMaterials);
+        if (isOutlined)
+        {
+            return;
+        }
 
-        // Add the outline material to the end
-        newMaterials.Add(outlineMaterial);
+        for (int i = 0; i < targetRenderers.Length; i++)
+        {
+            // Create a new list based on the original materials
+            List<Material> newMaterials = new List<Material>(originalMaterials[i]);
 
-        // Apply the new list to the renderer
-        meshRenderer.materials = newMaterials.ToArray();
+            // Add the outline material to the end
+            if (!newMaterials.Contains(outlineMaterial))
+            {
+                newMaterials.Add(outlineMaterial);
+            }
+
+            // Apply the new list to the renderer
+            targetRenderers[i].materials = newMaterials.ToArray();
+        }
+
+        isOutlined = true;
     }
 
     void OnMouseExit()
@@ -48,9 +66,14 @@ public class BookHover : MonoBehaviour
         Debug.Log("Mouse Exit: " + gameObject.name);
 
         // Revert to the clean original list
-        if (meshRenderer != null)
+        if (targetRenderers != null)
         {
-            meshRenderer.materials = originalMaterials;
+            for (int i = 0; i < targetRenderers.Length; i++)
+            {
+                targetRenderers[i].materials = originalMaterials[i];
+            }
         }
+
+        isOutlined = false;
     }
 }
