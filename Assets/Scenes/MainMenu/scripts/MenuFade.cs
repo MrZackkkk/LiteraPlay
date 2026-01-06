@@ -17,6 +17,10 @@ public class MenuFade : MonoBehaviour
     public List<Menu> menus;
     // Duration of the fade animation
     [SerializeField] private float fadeDuration = 0.1f;
+    [SerializeField] private float transitionThreshold = 0.01f;
+    [SerializeField] private bool disableWhenIdle = true;
+
+    private bool isAnyMenuTransitioning;
 
     // Internal class to track fade information for each menu
     private class FadeInfo
@@ -59,6 +63,8 @@ public class MenuFade : MonoBehaviour
         var targetMenu = fadeMenus[menuName];
         targetMenu.targetAlpha = 1f; // Set target alpha to fully visible
         targetMenu.canvasGroup.gameObject.SetActive(true); // Activate the game object
+        if (disableWhenIdle)
+            enabled = true;
     }
 
     // Method to hide a specific UI menu
@@ -68,6 +74,8 @@ public class MenuFade : MonoBehaviour
 
         var menu = fadeMenus[menuName];
         menu.targetAlpha = 0f; // Set target alpha to fully hidden
+        if (disableWhenIdle)
+            enabled = true;
     }
 
     // Called every frame
@@ -75,13 +83,27 @@ public class MenuFade : MonoBehaviour
     {
         // Determine smooth time, preventing division by zero
         float smoothTime = fadeDuration > 0 ? fadeDuration : 0.01f;
+        bool anyMenuTransitioning = false;
 
         // Update alpha for all managed menus
         foreach (var menu in fadeMenus.Values)
         {
             float currentAlpha = menu.canvasGroup.alpha;
-            // Smoothly transition current alpha towards target alpha
-            float newAlpha = Mathf.SmoothDamp(currentAlpha, menu.targetAlpha, ref menu.fadeVelocity, smoothTime);
+            float alphaDifference = Mathf.Abs(currentAlpha - menu.targetAlpha);
+            float newAlpha = currentAlpha;
+
+            if (alphaDifference > transitionThreshold)
+            {
+                anyMenuTransitioning = true;
+                // Smoothly transition current alpha towards target alpha
+                newAlpha = Mathf.SmoothDamp(currentAlpha, menu.targetAlpha, ref menu.fadeVelocity, smoothTime);
+            }
+            else
+            {
+                menu.fadeVelocity = 0f;
+                newAlpha = menu.targetAlpha;
+            }
+
             menu.canvasGroup.alpha = newAlpha;
 
             // Handle interactability and raycasting based on target alpha
@@ -103,5 +125,9 @@ public class MenuFade : MonoBehaviour
                 menu.canvasGroup.gameObject.SetActive(false);
             }
         }
+
+        isAnyMenuTransitioning = anyMenuTransitioning;
+        if (disableWhenIdle && !isAnyMenuTransitioning)
+            enabled = false;
     }
 }
