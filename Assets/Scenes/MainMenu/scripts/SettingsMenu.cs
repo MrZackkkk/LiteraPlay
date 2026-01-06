@@ -20,6 +20,9 @@ public class SettingsMenu : MonoBehaviour
     // Private array to store all available screen resolutions detected by Unity.
     Resolution[] resolutions;
 
+    // Private list to store the distinct screen resolutions shown in the dropdown.
+    List<Resolution> distinctResolutions;
+
     // Start is called once before the first frame update when the script instance is being loaded.
     // It's commonly used for initialization tasks.
     private void Start()
@@ -34,25 +37,42 @@ public class SettingsMenu : MonoBehaviour
         // Create a new list to hold the string representations of the resolution options.
         List<string> options = new List<string>();
 
+        // Build a distinct list of resolutions by screen size, keeping the max refresh rate per size.
+        Dictionary<Vector2Int, Resolution> resolutionBySize = new Dictionary<Vector2Int, Resolution>();
+
         // Initialize an index to keep track of the current screen resolution in the `resolutions` array.
         int currentResolutionIndex = 0;
 
         // Iterate through each available resolution.
         for (int i = 0; i < resolutions.Length; i++)
         {
-            // Format the resolution option string to include width, height, and refresh rate.
-            // Example: "1920 x 1080 @ 60hz"
-            // Note: resolutions[i].refreshRateRatio might be a new struct in modern Unity or a custom extension.
-            // Standard Unity `Resolution` has `refreshRate`. If `refreshRateRatio` is from `Resolution.refreshRateRatio` (Unity 2022.2+),
-            // it's a RefreshRate struct. You'd typically use `resolutions[i].refreshRateRatio.value`.
-            // Assuming `resolutions[i].refreshRateRatio` directly gives a usable numeric value for display here.
-            string option = resolutions[i].width + " x " + resolutions[i].height + " @ " + resolutions[i].refreshRateRatio + "hz";
+            Resolution resolution = resolutions[i];
+            Vector2Int sizeKey = new Vector2Int(resolution.width, resolution.height);
+            if (!resolutionBySize.TryGetValue(sizeKey, out Resolution existing) ||
+                GetRefreshRate(resolution) > GetRefreshRate(existing))
+            {
+                resolutionBySize[sizeKey] = resolution;
+            }
+        }
+
+        distinctResolutions = new List<Resolution>(resolutionBySize.Values);
+        distinctResolutions.Sort((left, right) =>
+        {
+            int widthCompare = left.width.CompareTo(right.width);
+            return widthCompare != 0 ? widthCompare : left.height.CompareTo(right.height);
+        });
+
+        for (int i = 0; i < distinctResolutions.Count; i++)
+        {
+            Resolution resolution = distinctResolutions[i];
+            int refreshRate = Mathf.RoundToInt(GetRefreshRate(resolution));
+            string option = resolution.width + " x " + resolution.height + " @ " + refreshRate + "hz";
             options.Add(option);
 
             // Check if the current resolution in the loop matches the game's current screen width and height.
             // Using Screen.width and Screen.height gives the current rendering dimensions of the game window/screen.
-            if (resolutions[i].width == Screen.width &&
-                resolutions[i].height == Screen.height)
+            if (resolution.width == Screen.width &&
+                resolution.height == Screen.height)
             {
                 // If a match is found, store the index of this resolution.
                 // This will be used to set the dropdown to show the current resolution by default.
@@ -74,11 +94,16 @@ public class SettingsMenu : MonoBehaviour
     // The `resolutionIndex` parameter is automatically provided by the Dropdown's OnValueChanged event.
     public void SetResolution(int resolutionIndex)
     {
-        // Get the Resolution struct from the `resolutions` array using the selected index.
-        Resolution resolution = resolutions[resolutionIndex];
+        // Get the Resolution struct from the `distinctResolutions` list using the selected index.
+        Resolution resolution = distinctResolutions[resolutionIndex];
 
         // Apply the selected resolution settings (width, height) and maintain the current fullscreen mode.
         Screen.SetResolution(resolution.width, resolution.height, Screen.fullScreen);
+    }
+
+    private float GetRefreshRate(Resolution resolution)
+    {
+        return (float)resolution.refreshRateRatio.value;
     }
 
     // Public method to be called by a UI Slider (or other control) to adjust the game volume.
