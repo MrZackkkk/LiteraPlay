@@ -93,7 +93,7 @@ public class ButtonController : MonoBehaviour, IPointerDownHandler, IPointerUpHa
         }
     }
 
-    private void onDisable()
+    private void OnDisable()
     {
         isPressed = false;
         MoveTextUp();
